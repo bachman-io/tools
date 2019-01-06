@@ -20,7 +20,7 @@
     <table class="table">
         <thead class="thead-light">
         <tr>
-            <th scope="col" class="text-center">Next Session</th>
+            <th scope="col" class="text-center">Next Available</th>
             <th scope="col" class="text-center">Lessons Pending</th>
             <th scope="col" class="text-center">Reviews Pending</th>
             <th scope="col" class="text-center">Reviews Within 1 Hour</th>
@@ -29,7 +29,7 @@
         </thead>
         <tbody>
         <tr>
-            <th scope="row" class="text-center">{{ $review_date->format('D n/j h:iA') }}</th>
+            <th scope="row" class="text-center">{{ $review_date->diffForHumans() }}</th>
             <td><p class="text-center">{{ $study_queue['lessons_available'] }}</p></td>
             <td><p class="text-center">{{ $study_queue['reviews_available'] }}</p></td>
             <td><p class="text-center">{{ $study_queue['reviews_available_next_hour'] }}</p></td>
