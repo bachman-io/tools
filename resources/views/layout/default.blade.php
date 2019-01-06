@@ -45,7 +45,7 @@
     <hr />
     <div class="row pt-3">
         <div class="col-sm">
-            <p class="text-center text-sm-left">&copy; 2019 <a href="https://www.bachman.io/">Collin Bachman</a> | <a href="/privacy">Privacy</a></p>
+            <p class="text-center text-sm-left">&copy; 2019 <a href="https://www.bachman.io/">Collin Bachman</a> | <a href="https://www.bachman.io/privacy">Privacy</a></p>
         </div>
         <div class="col-sm">
             <p class="text-center text-sm-right">Site design adapted from the <a href="https://github.com/SimonPadbury/b4st">b4st</a> theme for WordPress</p>
