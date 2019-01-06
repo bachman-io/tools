@@ -9,6 +9,35 @@
         <div class="progress-bar" role="progressbar" style="background: #9300dd; width: {{ (100 / 60) * $user['level'] }}%;" aria-valuenow="{{ (100 / 60) * $user['level'] }}" aria-valuemin="0" aria-valuemax="100">{{ $user['level'] }}/60</div>
     </div>
     <br/>
+    <h3>Study Queue</h3>
+    <p>Below are my queued up lessons and reviews. My schedule is as follows:</p>
+    <dl>
+        <dt>Monday - Friday</dt>
+        <dd>Reviews at 6:00AM, 12:00PM, 6:00PM &mdash; Lessons at 6:00PM</dd>
+        <dt>Saturday and Sunday</dt>
+        <dd>Reviews and Lessons after 9:00AM</dd>
+    </dl>
+    <table class="table">
+        <thead class="thead-light">
+        <tr>
+            <th scope="col" class="text-center">Next Session</th>
+            <th scope="col" class="text-center">Lessons Pending</th>
+            <th scope="col" class="text-center">Reviews Pending</th>
+            <th scope="col" class="text-center">Reviews Within 1 Hour</th>
+            <th scope="col" class="text-center">Reviews Within 1 Day</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <th scope="row" class="text-center">{{ $review_date->format('D n/j h:iA') }}</th>
+            <td><p class="text-center">{{ $study_queue['lessons_available'] }}</p></td>
+            <td><p class="text-center">{{ $study_queue['reviews_available'] }}</p></td>
+            <td><p class="text-center">{{ $study_queue['reviews_available_next_hour'] }}</p></td>
+            <td><p class="text-center">{{ $study_queue['reviews_available_next_day'] }}</p></td>
+        </tr>
+        </tbody>
+    </table>
+    <br/>
     <h3>SRS Distribution</h3>
     <p>The Spacial Repetition System (SRS) queues up reviews for radicals, kanji, and vocabulary at predetermined times, increasing farther apart as you show the ability to memorize them. New or unlearned items start at Apprentice and increase in intervals until they are Burned into your mind. If you get items wrong during reviews, they can be moved down an SRS level to help improve your learning them.</p>
     <table class="table">
@@ -104,7 +133,7 @@
     </table>
     <br/>
     <h3>Critical Items</h3>
-    <p>Any items that I seriously need to review will show up here. An item will leave this table once it's been properly memorized, and I'm no longer getting it wrong a lot.</p>
+    <p>Any items that I seriously need to review will show up here. An item will leave this table once it's been properly memorized, and I'm no longer getting it wrong a lot. <span style="background: #0093dd;">Radicals are blue,</span> <span style="background: #dd0093;">kanji are magenta,</span> <span style="background: #9300dd;">and vocabulary are purple.</span></p>
     <table class="table">
         <tbody>
         <tr>
@@ -149,40 +178,42 @@
                 </div>
                 <div id="collapse-l{{ $loop->iteration }}" class="collapse @if($loop->iteration === $user['level']) show @endif" aria-labelledby="header-l{{ $loop->iteration }}" data-parent="#levelAccordion">
                     <div class="card-body">
-                        @if($loop->iteration === $user['level'])
-                            <h4>Radicals Learned</h4>
-                            <div class="progress" style="background: #333333; height: 40px;">
-                                <div class="progress-bar" role="progressbar" style=" background: #0093dd; width: {{ (100 / $level_progression['radicals_total']) * $level_progression['radicals_progress'] }}%;" aria-valuenow="{{ (100 / $level_progression['radicals_total']) * $level_progression['radicals_progress'] }}" aria-valuemin="0" aria-valuemax="100">{{ $level_progression['radicals_progress'] }}/{{ $level_progression['radicals_total'] }}</div>
-                            </div>
-                            <br/>
-                        @else
-                        <h4>Radicals</h4>
+                        @if(isset($levels[$loop->iteration]['radicals']))
+                            @if($loop->iteration === $user['level'])
+                                <h4>Radicals Learned</h4>
+                                <div class="progress" style="background: #333333; height: 40px;">
+                                    <div class="progress-bar" role="progressbar" style=" background: #0093dd; width: {{ (100 / $level_progression['radicals_total']) * $level_progression['radicals_progress'] }}%;" aria-valuenow="{{ (100 / $level_progression['radicals_total']) * $level_progression['radicals_progress'] }}" aria-valuemin="0" aria-valuemax="100">{{ $level_progression['radicals_progress'] }}/{{ $level_progression['radicals_total'] }}</div>
+                                </div>
+                                <br/>
+                            @else
+                                <h4>Radicals</h4>
+                            @endif
+                            <p>Learned radicals are <span style="background: #0093dd">blue,</span> and unlearned radicals are <span style="background: #666666">grey.</span></p>
+                            <table class="table" style="background: #666666">
+                                <tbody>
+                                <tr>
+                                    @foreach($levels[$loop->iteration]['radicals'] as $r)
+                                        @if(!is_null($r['user_specific']) && $r['user_specific']['srs'] !== 'apprentice')
+                                            <td width="20%" style="background: #0093dd;">
+                                        @else
+                                            <td width="20%" style="background: #666666;">
+                                                @endif
+                                                <p class="text-center">@if($r['character'] === null)
+                                                        <img class="mx-auto" src="{{ $r['image'] }}" width="21px" alt="{{ $r['meaning'] }}"
+                                                    @else
+                                                        <strong>{{ $r['character'] }}</strong>
+                                                    @endif</p>
+                                                <p class="text-center">{{ $r['meaning'] }}</p>
+                                            </td>
+                                            @if($loop->iteration % 5 === 0)
+                                </tr>
+                                <tr>
+                                    @endif
+                                    @endforeach
+                                </tr>
+                                </tbody>
+                            </table>
                         @endif
-                        <p>Learned radicals are <span style="background: #0093dd">blue,</span> and unlearned radicals are <span style="background: #666666">grey.</span></p>
-                        <table class="table" style="background: #666666">
-                            <tbody>
-                            <tr>
-                                @foreach($levels[$loop->iteration]['radicals'] as $r)
-                                    @if(!is_null($r['user_specific']) && $r['user_specific']['srs'] !== 'apprentice')
-                                        <td width="20%" style="background: #0093dd;">
-                                    @else
-                                        <td width="20%" style="background: #666666;">
-                                            @endif
-                                            <p class="text-center">@if($r['character'] === null)
-                                                    <img class="mx-auto" src="{{ $r['image'] }}" width="21px" alt="{{ $r['meaning'] }}"
-                                                @else
-                                                    <strong>{{ $r['character'] }}</strong>
-                                                @endif</p>
-                                            <p class="text-center">{{ $r['meaning'] }}</p>
-                                        </td>
-                                        @if($loop->iteration % 5 === 0)
-                            </tr>
-                            <tr>
-                                @endif
-                                @endforeach
-                            </tr>
-                            </tbody>
-                        </table>
                             @if($loop->iteration === $user['level'])
                                 <h4>Kanji Leaned</h4>
                                 <div class="progress" style="background: #333333; height: 40px;">

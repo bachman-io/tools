@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use GuzzleHttp\Client;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 class PageController extends Controller
@@ -33,6 +34,34 @@ class PageController extends Controller
         $jsonString = json_decode($response->getBody(), true);
         $result['user'] = $jsonString['user_information'];
         $result['level_progression'] = $jsonString['requested_information'];
+
+        $response = $client->get('study-queue');
+        $study_queue = json_decode($response->getBody(), true)['requested_information'];
+
+        $review_date_unix = $study_queue['next_review_date'];
+
+        $review_date = Carbon::createFromTimestamp($review_date_unix, "America/New_York");
+
+        if ($review_date->dayOfWeekIso <= 5) {
+            if ($review_date->hour < 6) {
+                $review_date->hour = 6;
+            }
+            if ($review_date->hour > 6) {
+                if ($review_date->hour < 12) {
+                    $review_date->hour = 12;
+                }
+                if ($review_date->hour > 12 && $review_date->hour < 18) {
+                    $review_date->hour = 18;
+                }
+            }
+        } else {
+            if ($review_date->hour < 9) {
+                $review_date->hour = 9;
+            }
+        }
+
+        $result['review_date'] = $review_date;
+        $result['study_queue'] = $study_queue;
 
         $response = $client->get('srs-distribution');
         $result['srs_distribution'] = json_decode($response->getBody(), true)['requested_information'];
