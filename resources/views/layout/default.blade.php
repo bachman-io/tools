@@ -1,6 +1,7 @@
 <html class="no-js" lang="en-US" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#">
     <head>
         <title>{{$title}}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel='dns-prefetch' href='//cdnjs.cloudflare.com' />
         <link rel='dns-prefetch' href='//static.bachman.io' />
         <link rel='dns-prefetch' href='//use.fontawesome.com' />
