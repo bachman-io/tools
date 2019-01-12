@@ -13,13 +13,13 @@
             <a class="nav-link" href="/kanji">Kanji</a>
         @endif
     </li>
-    <li class="nav-item">
+   {{-- <li class="nav-item">
         @if(request()->is('kanji_v2'))
             <a class="nav-link active" href="/kanji_v2">Kanji V2</a>
         @else
             <a class="nav-link" href="/kanji_v2">Kanji V2</a>
         @endif
-    </li>
+    </li>--}}
     <li class="nav-item">
         <a class="nav-link disabled" href="#">Anime</a>
     </li>
