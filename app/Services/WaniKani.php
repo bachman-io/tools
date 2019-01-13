@@ -612,7 +612,7 @@ class WaniKani
     {
         $critical_items = [];
         $review_statistics = ReviewStatistic::with('subject')
-            ->where('percentage_correct', '<', 90)
+            ->where('percentage_correct', '<', 75)
             ->orderBy('percentage_correct')
             ->take(30)
             ->get();
