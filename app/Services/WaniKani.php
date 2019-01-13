@@ -689,9 +689,9 @@ class WaniKani
 
                 $result[$subject->level][$object_id][$subject->id]['meanings'] = $subject->meanings;
 
-                $color = '#333333';
+                $color = '#666666';
                 if (!is_null($subject->assignment)) {
-                    $color = '#666666';
+                    $color = '#888888';
                     if ($subject->assignment->srs_stage > 4) {
                         switch($subject->object) {
                             case 'radical':

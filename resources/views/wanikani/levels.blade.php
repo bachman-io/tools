@@ -5,8 +5,8 @@
     <br/>
     <h3>Notes</h3>
     <p><ul>
-        <li>Locked items have are dark grey (like this text).</li>
-        <li><span style="background: #666;">Unlocked but Unlearned items are light grey.</span></li>
+        <li><span style="background: #666;">Locked items have are dark grey.</span></li>
+        <li><span style="background: #888;">Unlocked but Unlearned items are light grey.</span></li>
         <li>Learned items: <ul>
                 <li><span style="background: #0093dd">are blue if they are radicals.</span></li>
                 <li><span style="background: #dd0093">are magenta if they are kanji.</span></li>
