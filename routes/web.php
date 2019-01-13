@@ -13,3 +13,5 @@
 
 Route::get('/', 'PageController@index')->name('home');
 Route::get('/kanji', 'PageController@kanji')->name('kanji');
+Route::get('/wanikani', 'WaniKaniController@index')->name('wk_summary');
+Route::get('/wanikani/levels/{level?}', 'WaniKaniController@levels')->name('wk_levels');

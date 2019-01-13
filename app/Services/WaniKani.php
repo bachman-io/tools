@@ -9,7 +9,9 @@ use App\Models\WaniKani\Summary;
 use App\Models\WaniKani\User;
 use App\Models\WaniKani\ReviewStatistic;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use GuzzleHttp\Client;
 use Carbon\Carbon;
 
@@ -29,7 +31,15 @@ class WaniKani
         $this->cdnClient = new Client();
     }
 
-    public function truncateTables(Command $command) {
+    public function clearCache(Command $command)
+    {
+        $command->info('Clearing WaniKani Cache...');
+        Cache::tags('wanikani')->flush();
+        $command->comment('Done!');
+    }
+
+    public function truncateTables(Command $command)
+    {
         $command->info('Truncating Database Tables...');
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         $command->comment('Truncating Review Statistics...');
@@ -93,7 +103,7 @@ class WaniKani
             $response = $this->apiClient->get('srs_stages');
             $srs_stages = json_decode($response->getBody(), true)['data'];
 
-            foreach($srs_stages as $srs_stage) {
+            foreach ($srs_stages as $srs_stage) {
                 $srs = new SrsStage;
                 $srs->srs_stage = $srs_stage['srs_stage'];
                 $srs->srs_stage_name = $srs_stage['srs_stage_name'];
@@ -104,7 +114,7 @@ class WaniKani
             }
             $command->comment('Done!');
         }
-}
+    }
 
     public function updateSubjects(Command $command)
     {
@@ -116,7 +126,7 @@ class WaniKani
             $bar = $command->getOutput()->createProgressBar($total);
             $bar->start();
 
-            while(!is_null($next_page_url)) {
+            while (!is_null($next_page_url)) {
                 $response = $this->apiClient->get($next_page_url);
                 $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
                 $subjects = json_decode($response->getBody(), true)['data'];
@@ -139,15 +149,16 @@ class WaniKani
                     $subject->characters = $s['data']['characters'];
 
                     //TODO: Follow up with WaniKani on missing Coral radical SVG, it's throwing a 403
-                    if ($s['object'] === 'radical' && is_null($s['data']['characters'] && $s['id'] !== 8794)) {
-                        foreach($s['data']['character_images'] as $character_image) {
-                            if($character_image['content_type'] === 'image/svg+xml'
-                                && $character_image['metadata']['inline_styles'] == true) {
+                    if ($s['object'] === 'radical' && is_null($s['data']['characters'])) {
+                        foreach ($s['data']['character_images'] as $character_image) {
+                            if ($character_image['content_type'] === 'image/svg+xml'
+                                && $character_image['metadata']['inline_styles'] == false) {
                                 try {
                                     $svg = $this->cdnClient->get($character_image['url']);
                                     $subject->character_image = (string)$svg->getBody();
-                                } catch(\Exception $exception) {
-                                    $subject->character_image = '?';
+                                } catch (\Exception $exception) {
+                                    $subject->character_image = null;
+                                    $subject->characters = '?';
                                 }
                             }
                         }
@@ -158,7 +169,7 @@ class WaniKani
                     $temp_meanings = [];
 
                     foreach ($s['data']['meanings'] as $meaning) {
-                        if($meaning['accepted_answer'] === true) {
+                        if ($meaning['accepted_answer'] === true) {
                             $temp_meanings[] = $meaning['meaning'];
                         }
                     }
@@ -167,21 +178,21 @@ class WaniKani
 
                     $subject->document_url = $s['data']['document_url'];
 
-                    if($s['object'] === 'radical' || $s['object'] === 'kanji') {
+                    if ($s['object'] === 'radical' || $s['object'] === 'kanji') {
                         $subject->amalgamation_subject_ids = implode(', ', $s['data']['amalgamation_subject_ids']);
                     }
 
-                    if($s['object'] === 'vocabulary' || $s['object'] === 'kanji') {
+                    if ($s['object'] === 'vocabulary' || $s['object'] === 'kanji') {
                         $subject->component_subject_ids = implode(', ', $s['data']['component_subject_ids']);
                     }
 
-                    if($s['object'] === 'kanji') {
+                    if ($s['object'] === 'kanji') {
                         $on_yomi = [];
                         $kun_yomi = [];
                         $nanori = [];
 
-                        foreach($s['data']['readings'] as $reading) {
-                            switch($reading['type']) {
+                        foreach ($s['data']['readings'] as $reading) {
+                            switch ($reading['type']) {
                                 case 'onyomi':
                                     $on_yomi[] = $reading['reading'];
                                     break;
@@ -203,10 +214,10 @@ class WaniKani
                         $subject->nanori = null;
                     }
 
-                    if($s['object'] === 'vocabulary') {
+                    if ($s['object'] === 'vocabulary') {
                         $readings = [];
-                        foreach($s['data']['readings'] as $reading) {
-                            if($reading['accepted_answer'] === true) {
+                        foreach ($s['data']['readings'] as $reading) {
+                            if ($reading['accepted_answer'] === true) {
                                 $readings[] = $reading['reading'];
                             }
                         }
@@ -235,7 +246,7 @@ class WaniKani
         $bar = $command->getOutput()->createProgressBar($total);
         $bar->start();
 
-        while(!is_null($next_page_url)) {
+        while (!is_null($next_page_url)) {
             $response = $this->apiClient->get($next_page_url);
             $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
             $assignments = json_decode($response->getBody(), true)['data'];
@@ -341,13 +352,13 @@ class WaniKani
 
         $summary->subject_ids = empty($sy['lessons'][0]['subject_ids'])
             ? null
-            : implode (', ', $sy['lessons'][0]['subject_ids']);
+            : implode(', ', $sy['lessons'][0]['subject_ids']);
 
         $summary->save();
 
         $hours = 0;
 
-        foreach($sy['reviews'] as $review) {
+        foreach ($sy['reviews'] as $review) {
             $summary = new Summary;
 
             $summary->type = 'reviews';
@@ -362,7 +373,7 @@ class WaniKani
 
             $summary->subject_ids = empty($review['subject_ids'])
                 ? null
-                : implode (', ', $review['subject_ids']);
+                : implode(', ', $review['subject_ids']);
 
             $summary->save();
             $hours++;
@@ -380,7 +391,7 @@ class WaniKani
         $bar = $command->getOutput()->createProgressBar($total);
         $bar->start();
 
-        while(!is_null($next_page_url)) {
+        while (!is_null($next_page_url)) {
             $response = $this->apiClient->get($next_page_url);
             $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
             $review_statistics = json_decode($response->getBody(), true)['data'];
@@ -416,5 +427,295 @@ class WaniKani
         }
         $bar->finish();
         echo PHP_EOL;
+    }
+
+    public function cacheItems(Command $command)
+    {
+        $command->info('Adding Items to Cache...');
+        Cache::tags('wanikani')->put('study_queue', $this->getStudyQueue(), 120);
+        Cache::tags('wanikani')->put('srs_distribution', $this->getSrsDistribution(), 120);
+        Cache::tags('wanikani')->put('recent_unlocks', $this->getRecentUnlocks(), 120);
+        Cache::tags('wanikani')->put('critical_items', $this->getCriticalItems(), 120);
+        $this->getLevels();
+        Cache::tags('wanikani')->put('user', User::first(), 120);
+    }
+
+    private function getStudyQueue()
+    {
+        $study_queue = [];
+
+        $lessons = Summary::where('type', 'lessons')->first();
+        if (!is_null($lessons->subject_ids)) {
+            $study_queue['lessons']['totals'] = [];
+            $subjects = Subject::whereIn('id', explode(', ', $lessons->subject_ids))
+                ->orderBy('level')
+                ->get();
+
+            foreach ($subjects as $subject) {
+                switch ($subject->object) {
+                    case('radical'):
+                        $object_id = 0;
+                        break;
+                    case('kanji'):
+                        $object_id = 1;
+                        break;
+                    case('vocabulary'):
+                        $object_id = 2;
+                        break;
+                }
+                $study_queue['lessons']['subjects'][$subject->level][$object_id][] = $subject;
+                if (!isset($study_queue['lessons']['totals'][$subject->level])) {
+                    $study_queue['lessons']['totals'][$subject->level] = 0;
+                }
+                $study_queue['lessons']['totals'][$subject->level]++;
+                ksort($study_queue['lessons']['subjects'][$subject->level]);
+            }
+        } else {
+            $study_queue['lessons'] = [];
+        }
+
+        $reviews = Summary::whereNotNull('subject_ids')
+            ->where('type', 'reviews')
+            ->orderBy('hours_from_now')
+            ->get();
+
+        if (!$reviews->isEmpty()) {
+            foreach ($reviews as $review) {
+                if ($review->hours_from_now > 0) {
+                    $study_queue['reviews'][$review->hours_from_now]['available_at'] = 'in ';
+                    if ($review->hours_from_now > 1) {
+                        $study_queue['reviews'][$review->hours_from_now]['available_at'] .= $review->hours_from_now . ' Hours';
+                    } else {
+                        $study_queue['reviews'][$review->hours_from_now]['available_at'] .= $review->hours_from_now . ' Hour';
+                    }
+                }
+
+                $subjects = Subject::whereIn('id', explode(', ', $review->subject_ids))
+                    ->orderBy('level')
+                    ->get();
+
+                foreach ($subjects as $subject) {
+                    switch ($subject->object) {
+                        case('radical'):
+                            $object_id = 0;
+                            break;
+                        case('kanji'):
+                            $object_id = 1;
+                            break;
+                        case('vocabulary'):
+                            $object_id = 2;
+                            break;
+                    }
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level])) {
+                        $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level] = 0;
+                    }
+                    $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level]++;
+                    $study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][$object_id]
+                    [] = $subject;
+                    ksort($study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level]);
+                }
+            }
+        } else {
+            $study_queue['reviews'] = [];
+        }
+
+        return $study_queue;
+    }
+
+    private function getSrsDistribution()
+    {
+        $srs_distribution = [];
+        $zero_date = Carbon::createFromTimestamp(0);
+
+        $srs_stages = SrsStage::orderBy('srs_stage')->get();
+        foreach ($srs_stages as $srs_stage) {
+            $srs_distribution[] = $srs_stage->srs_stage;
+            $srs_distribution[$srs_stage->srs_stage] = [
+                'name' => $srs_stage->srs_stage_name,
+                'total' => 0,
+                'radicals' => 0,
+                'kanji' => 0,
+                'vocabulary' => 0
+            ];
+
+            $interval_string = '';
+            $interval = Carbon::createFromTimestamp($srs_stage->interval);
+
+            if ($interval->diffInDays($zero_date) > 0) {
+                if ($interval->diffInDays($zero_date) > 1) {
+                    $interval_string .= $interval->diffInDays($zero_date) . ' days';
+                } else {
+                    $interval_string = $interval->diffInDays($zero_date) . ' day';
+                }
+                $interval->subDays($interval->diffInDays($zero_date));
+                if ($interval->diffInHours($zero_date) > 1) {
+                    $interval_string .= ', ' . $interval->diffInHours($zero_date) . ' hours';
+                } else if ($interval->diffInHours($zero_date) > 0) {
+                    $interval_string = ', ' . $interval->diffInHours($zero_date) . ' hour';
+                }
+            } else {
+                if ($interval->diffInHours($zero_date) > 1) {
+                    $interval_string .= $interval->diffInHours($zero_date) . ' hours';
+                } else if ($interval->diffInHours($zero_date) > 0) {
+                    $interval_string = $interval->diffInHours($zero_date) . ' hour';
+                } else {
+                    $interval_string = '-';
+                }
+            }
+
+            $srs_distribution[$srs_stage->srs_stage]['interval'] = $interval_string;
+
+            $srs_distribution[$srs_stage->srs_stage]['total'] +=
+                Assignment::where('srs_stage', $srs_stage->srs_stage)->count();
+
+            $srs_distribution[$srs_stage->srs_stage]['radicals'] +=
+                Assignment::whereHas('subject', function ($query) {
+                    $query->where('object', 'radical');
+                })
+                    ->where('srs_stage', $srs_stage->srs_stage)
+                    ->count();
+            $srs_distribution[$srs_stage->srs_stage]['kanji'] +=
+                Assignment::whereHas('subject', function ($query) {
+                    $query->where('object', 'kanji');
+                })
+                    ->where('srs_stage', $srs_stage->srs_stage)
+                    ->count();
+            $srs_distribution[$srs_stage->srs_stage]['vocabulary'] +=
+                Assignment::whereHas('subject', function ($query) {
+                    $query->where('object', 'vocabulary');
+                })
+                    ->where('srs_stage', $srs_stage->srs_stage)
+                    ->count();
+        }
+        return $srs_distribution;
+    }
+    private function getRecentUnlocks()
+    {
+        $recent_unlocks = [];
+
+        $assignments = Assignment::with('subject')
+            ->whereNotNull('unlocked_at')
+            ->orderBy('unlocked_at', 'desc')
+            ->take(30)
+            ->get();
+
+        if(!$assignments->isEmpty()) {
+            foreach($assignments as $assignment) {
+                $recent_unlocks[] = $assignment->subject;
+            }
+        }
+
+        return $recent_unlocks;
+    }
+
+    private function getCriticalItems()
+    {
+        $critical_items = [];
+        $review_statistics = ReviewStatistic::with('subject')
+            ->where('percentage_correct', '<', 90)
+            ->orderBy('percentage_correct')
+            ->take(30)
+            ->get();
+
+        if(!$review_statistics->isEmpty()) {
+            foreach($review_statistics as $review_statistic) {
+                $critical_items[] = $review_statistic->subject;
+            }
+        }
+        return $critical_items;
+    }
+
+    private function getLevels()
+    {
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [1,2,3,4,5,6,7,8,9,10])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_1-10', $this->putLevels($levels), 120);
+
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [11,12,13,14,15,16,17,18,19,20])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_11-20', $this->putLevels($levels), 120);
+
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [21,22,23,24,25,26,27,28,29,30])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_21-30', $this->putLevels($levels), 120);
+
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [31,32,33,34,35,36,37,38,39,40])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_31-40', $this->putLevels($levels), 120);
+
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [41,42,43,44,45,46,47,48,49,50])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_41-50', $this->putLevels($levels), 120);
+
+        $levels = Subject::with('assignment')
+            ->whereIn('level', [51,52,53,54,55,56,57,58,59,60])
+            ->get();
+
+        Cache::tags('wanikani')->put('levels_51-60', $this->putLevels($levels), 120);
+    }
+
+    private function putLevels(Collection $levels)
+    {
+        if ($levels->isEmpty()) {
+            $result = [];
+        } else {
+            foreach($levels as $subject) {
+                switch($subject->object) {
+                    case 'radical':
+                        $object_id = 0;
+                        break;
+                    case 'kanji':
+                        $object_id = 1;
+                        break;
+                    case 'vocabulary':
+                        $object_id = 2;
+                        break;
+                }
+
+                $result[$subject->level][$object_id][$subject->id]['characters']
+                    = is_null($subject->characters)
+                    ? $subject->character_image
+                    : $subject->characters;
+
+                $result[$subject->level][$object_id][$subject->id]['meanings'] = $subject->meanings;
+
+                $color = '#333333';
+                if (!is_null($subject->assignment)) {
+                    $color = '#666666';
+                    if ($subject->assignment->srs_stage > 4) {
+                        switch($subject->object) {
+                            case 'radical':
+                                $color = '#0093dd';
+                                break;
+                            case 'kanji':
+                                $color = '#dd0093';
+                                break;
+                            case 'vocabulary':
+                                $color = '#9300dd';
+                                break;
+                        }
+                    }
+                }
+
+                $result[$subject->level][$object_id][$subject->id]['color'] = $color;
+                $result[$subject->level][$object_id][$subject->id]['document_url'] = $subject->document_url;
+                if(!isset($result[$subject->level][0])) {
+                    $result[$subject->level][0] = [];
+                }
+                ksort($result[$subject->level]);
+            }
+            ksort($result);
+        }
+        return $result;
     }
 }

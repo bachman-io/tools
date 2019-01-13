@@ -49,6 +49,8 @@ class Update extends Command
         $wk->updateAssignments($this);
         $wk->updateReviewStatistics($this);
         $wk->updateSummaries($this);
+        $wk->clearCache($this);
+        $wk->cacheItems($this);
         $this->comment('---');
         $this->info('All Done!');
     }

@@ -1,15 +1,15 @@
 <html class="no-js" lang="en-US" prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#">
-    <head>
-        <title>{{$title}}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel='dns-prefetch' href='//cdnjs.cloudflare.com' />
-        <link rel='dns-prefetch' href='//static.bachman.io' />
-        <link rel='dns-prefetch' href='//use.fontawesome.com' />
-        <link rel='dns-prefetch' href='//s.w.org' />
-
-        <link rel='stylesheet' id='bootstrap-css'  href='https://static.bachman.io/web/assets/v2/css/style.min.css' type='text/css' media='all' />
-        <link rel='stylesheet' id='fontawesome5-css'  href='https://use.fontawesome.com/releases/v5.4.1/css/all.css?ver=5.4.1' type='text/css' media='all' />
-    </head>
+<head>
+    <title>{{$title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="10" />
+    <link rel='dns-prefetch' href='//cdnjs.cloudflare.com' />
+    <link rel='dns-prefetch' href='//static.bachman.io' />
+    <link rel='dns-prefetch' href='//use.fontawesome.com' />
+    <link rel='dns-prefetch' href='//s.w.org' />
+    <link rel='stylesheet' id='bootstrap-css'  href='https://static.bachman.io/web/assets/v2/css/style.min.css' type='text/css' media='all' />
+    <link rel='stylesheet' id='fontawesome5-css'  href='https://use.fontawesome.com/releases/v5.4.1/css/all.css?ver=5.4.1' type='text/css' media='all' />
+</head>
 
 <body>
 <nav id="navbar" class="navbar navbar-expand-md navbar-dark fixed-top" style="background: #333;">
@@ -39,7 +39,8 @@
 <div class="container">
     <h1 class="display-1 text-center">Tools</h1>
     @include('layout.navbar')
-    @yield('content')
+    <br/>
+    <h2 class="text-center">Updating Content (will reload automagically)...</h2>
 </div>
 
 <div class="container">
