@@ -488,6 +488,8 @@ class WaniKani
                     } else {
                         $study_queue['reviews'][$review->hours_from_now]['available_at'] .= $review->hours_from_now . ' Hour';
                     }
+                } else {
+                    $study_queue['reviews'][$review->hours_from_now]['available_at'] = 'Now';
                 }
 
                 $subjects = Subject::whereIn('id', explode(', ', $review->subject_ids))
