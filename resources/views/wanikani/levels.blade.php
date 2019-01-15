@@ -19,7 +19,8 @@
         <tr>
             <th scope="col" class="text-center" width="5%">Level</th>
             <th scope="col" class="text-center" width="10%">Type</th>
-            <th scope="col" class="text-center" width="85%">Items</th>
+            <th scope="col" class="text-center" width="5%">Count</th>
+            <th scope="col" class="text-center" width="80%">Items</th>
         </tr>
         </thead>
         <tbody>
@@ -30,6 +31,7 @@
                         <th scope="row" rowspan="3">{{ $level }}</th>
                     @endif
                     <td>{{ $type_names[$type] }}</td>
+                        <td>{{ count($items) }}</td>
                     <td>
                         @forelse($items as $item)
                             <a href="{{ $item['document_url'] }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item['meanings'] }}">
