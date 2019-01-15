@@ -542,6 +542,8 @@ class WaniKani
 
             $interval_string = '';
             $interval = Carbon::createFromTimestamp($srs_stage->interval);
+            $acc_interval_string = '';
+            $accelerated_interval = Carbon::createFromTimestamp($srs_stage->accelerated_interval);
 
             if ($interval->diffInDays($zero_date) > 0) {
                 if ($interval->diffInDays($zero_date) > 1) {
@@ -565,7 +567,30 @@ class WaniKani
                 }
             }
 
+            if ($accelerated_interval->diffInDays($zero_date) > 0) {
+                if ($accelerated_interval->diffInDays($zero_date) > 1) {
+                    $acc_interval_string .= $accelerated_interval->diffInDays($zero_date) . ' days';
+                } else {
+                    $acc_interval_string = $accelerated_interval->diffInDays($zero_date) . ' day';
+                }
+                $accelerated_interval->subDays($accelerated_interval->diffInDays($zero_date));
+                if ($accelerated_interval->diffInHours($zero_date) > 1) {
+                    $acc_interval_string .= ', ' . $accelerated_interval->diffInHours($zero_date) . ' hours';
+                } else if ($accelerated_interval->diffInHours($zero_date) > 0) {
+                    $acc_interval_string = ', ' . $accelerated_interval->diffInHours($zero_date) . ' hour';
+                }
+            } else {
+                if ($accelerated_interval->diffInHours($zero_date) > 1) {
+                    $acc_interval_string .= $accelerated_interval->diffInHours($zero_date) . ' hours';
+                } else if ($accelerated_interval->diffInHours($zero_date) > 0) {
+                    $acc_interval_string = $accelerated_interval->diffInHours($zero_date) . ' hour';
+                } else {
+                    $acc_interval_string = '-';
+                }
+            }
+
             $srs_distribution[$srs_stage->srs_stage]['interval'] = $interval_string;
+            $srs_distribution[$srs_stage->srs_stage]['acc_interval'] = $acc_interval_string;
 
             $srs_distribution[$srs_stage->srs_stage]['total'] +=
                 Assignment::where('srs_stage', $srs_stage->srs_stage)->count();

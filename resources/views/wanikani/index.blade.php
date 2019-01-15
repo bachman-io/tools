@@ -99,7 +99,11 @@
         <thead class="thead-light">
         <tr>
             <th scope="col" class="text-center">SRS Stage</th>
-            <th scope="col" class="text-center">Interval</th>
+            @if($user['level'] < 3)
+                <th scope="col" class="text-center">Accelerated Interval <a data-toggle="tooltip" data-placement="top" data-original-title="I am Level 2 or lower, so WaniKani cuts the SRS intervals in half for the Apprentice stages; otherwise, intervals are unchanged.">[?]</a></th>
+                @else
+                <th scope="col" class="text-center">Interval</th>
+            @endif
             <th scope="col" class="text-center">Total</th>
             <th scope="col" class="text-center">Radicals</th>
             <th scope="col" class="text-center">Kanji</th>
@@ -111,7 +115,11 @@
             @if($stage['total'] > 0)
                 <tr>
                     <th scope="row" class="text-center">{{ $stage['name'] }}</th>
-                    <td class="text-center">{{ $stage['interval'] }}</td>
+                    @if($user['level'] < 3)
+                    <td class="text-center">{{ $stage['acc_interval'] }}</td>
+                        @else
+                        <td class="text-center">{{ $stage['interval'] }}</td>
+                    @endif
                     <td class="text-center">{{ number_format($stage['total']) }}</td>
                     <td class="text-center">{{ number_format($stage['radicals']) }}</td>
                     <td class="text-center">{{ number_format($stage['kanji']) }}</td>
