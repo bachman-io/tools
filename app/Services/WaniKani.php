@@ -471,7 +471,7 @@ class WaniKani
                 ksort($study_queue['lessons']['subjects'][$subject->level]);
             }
         } else {
-            $study_queue['lessons'] = [];
+            $study_queue['lessons']['subjects'] = [];
         }
 
         $reviews = Summary::whereNotNull('subject_ids')
