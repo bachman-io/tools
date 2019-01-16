@@ -48,7 +48,7 @@ class WaniKani
         DB::table('summaries')->truncate();
         $command->comment('Truncating Assignments...');
         DB::table('assignments')->truncate();
-        if ($command->option('force') || (Carbon::now()->hour === 8)) {
+        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
             $command->comment('Truncating Subjects...');
             DB::table('subjects')->truncate();
             $command->comment('Truncating SRS Stages...');
@@ -62,7 +62,7 @@ class WaniKani
 
     public function updateUser(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8)) {
+        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
             $command->info('Updating User...');
             $response = $this->apiClient->get('user');
             $u = json_decode($response->getBody(), true)['data'];
@@ -98,7 +98,7 @@ class WaniKani
 
     public function updateSrsStages(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8)) {
+        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
             $command->info('Updating SRS Stages...');
             $response = $this->apiClient->get('srs_stages');
             $srs_stages = json_decode($response->getBody(), true)['data'];
@@ -118,7 +118,7 @@ class WaniKani
 
     public function updateSubjects(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8)) {
+        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
             $command->info('Updating Subjects...');
             $next_page_url = 'https://api.wanikani.com/v2/subjects?hidden=false';
             $response = $this->apiClient->get($next_page_url);
