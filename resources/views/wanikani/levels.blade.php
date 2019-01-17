@@ -35,7 +35,7 @@
                     <td>
                         @forelse($items as $item)
                             <a href="{{ $item['document_url'] }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item['meanings'] }}">
-                                <span lang="ja" style="background: {{ $item['color'] }}">{!! $item['characters'] !!}</span>
+                                <span lang="ja"  class="no-wrap" style="background: {{ $item['color'] }}">{!! $item['characters'] !!}</span>
                             </a>
 
                         @empty

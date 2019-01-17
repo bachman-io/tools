@@ -22,7 +22,7 @@
             <td>
                 @forelse($recent_unlocks as $item)
                     <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
-                            <span lang="ja"
+                            <span lang="ja" class="no-wrap"
                                   @switch($item->object)
                                   @case('radical')
                                   style="background: #0093dd;"
@@ -64,7 +64,7 @@
             <td>
                 @forelse($critical_items as $item)
                     <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
-                            <span lang="ja"
+                            <span lang="ja" class="no-wrap"
                                   @switch($item->object)
                                   @case('radical')
                                   style="background: #0093dd;"
@@ -157,7 +157,7 @@
                 @foreach($types as $items => $objects)
                     @foreach($objects as $item)
                         <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
-                            <span lang="ja"
+                            <span lang="ja" class="no-wrap"
                     @switch($item->object)
                         @case('radical')
                                 style="background: #0093dd;"
@@ -210,13 +210,13 @@
                                 <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
                                     @switch($item->object)
                                         @case('radical')
-                                        <span lang="ja" style="background: #0093dd;">
+                                        <span lang="ja"  class="no-wrap" style="background: #0093dd;">
                         @break
                                             @case('kanji')
-                            <span lang="ja" style="background: #dd0093;">
+                            <span lang="ja"  class="no-wrap" style="background: #dd0093;">
                         @break
                                 @case('vocabulary')
-                                <span lang="ja" style="background: #9300dd;">
+                                <span lang="ja"  class="no-wrap" style="background: #9300dd;">
                         @break
                                     @endswitch
                                     @if(!is_null($item->character_image))
