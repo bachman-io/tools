@@ -13,6 +13,7 @@ class WaniKaniController extends Controller
         if(Cache::tags('wanikani')->has('user')){
             $data = $this->getSummary();
             $data['title'] = 'WaniKani - Tools - Bachman I/O';
+            //dd($data);
             return view('wanikani.index', $data);
         } else {
             $data['title'] = 'WaniKani - Tools - Bachman I/O';
@@ -50,6 +51,7 @@ class WaniKaniController extends Controller
     private function getSummary() {
         $result = [];
         $result['user'] = Cache::tags('wanikani')->get('user');
+        $result['burned_items'] = Cache::tags('wanikani')->get('burned_items');
         $result['study_queue'] = Cache::tags('wanikani')->get('study_queue');
         $result['recent_unlocks'] = Cache::tags('wanikani')->get('recent_unlocks');
         $result['critical_items'] = Cache::tags('wanikani')->get('critical_items');

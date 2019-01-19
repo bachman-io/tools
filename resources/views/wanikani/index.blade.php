@@ -6,9 +6,17 @@
     <h3>Level Progression</h3>
     <p>Wanikani has 60 levels of kanji, covering most of the kanji found up to the N1 Japanese Proficiency Test. This represents the current level I'm on.</p>
     <div class="progress" style="height: 40px;">
-        <div class="progress-bar" role="progressbar" style="background: #9300dd; width: {{ (100 / $user['max_level_granted_by_subscription']) * $user['level'] }}%;" aria-valuenow="{{ (100 / $user['max_level_granted_by_subscription']) * $user['level'] }}" aria-valuemin="0" aria-valuemax="100">{{ $user['level'] }}/{{ $user['max_level_granted_by_subscription'] }}</div>
+        <div class="progress-bar" role="progressbar" style="background: #DD9300; color: #ffffff; width: {{ (100 / $user['max_level_granted_by_subscription']) * $user['level'] }}%;" aria-valuenow="{{ (100 / $user['max_level_granted_by_subscription']) * $user['level'] }}" aria-valuemin="0" aria-valuemax="100">{{ $user['level'] }}/{{ $user['max_level_granted_by_subscription'] }}</div>
     </div>
     <hr/>
+    @if($burned_items['burned'] >= 88)
+    <h3>Burned Items</h3>
+    <p>These items are “fluent” in my brain. The answers come with little-to-no effort. I will remember these items for a long, long time. Even if I don’t use them and “forget” them sometime in the future, they should come back to me quickly after recalling it. Items that are “burned” no longer show up in reviews.</p>
+    <div class="progress" style="height: 40px;">
+        <div class="progress-bar" role="progressbar" style="background: #DD9300; color: #ffffff; width: {{ (100 / $burned_items['total']) * $burned_items['burned'] }}%;" aria-valuenow="{{ (100 / $burned_items['total']) * $burned_items['burned'] }}" aria-valuemin="0" aria-valuemax="100">{{ $burned_items['burned'] }}/{{ $burned_items['total'] }}</div>
+    </div>
+    <hr/>
+    @endif
     <h3>Recent Unlocks</h3>
     <p>The 30 most recent items unlocked are shown below. <span style="background: #0093dd;">Radicals are blue,</span> <span style="background: #dd0093;">kanji are magenta,</span> <span style="background: #9300dd;">and vocabulary are purple.</span></p>
     <table class="table">

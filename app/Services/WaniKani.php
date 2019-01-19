@@ -25,7 +25,7 @@ class WaniKani
         $this->apiClient = new Client([
             'base_uri' => 'https://api.wanikani.com/v2/',
             'headers' => [
-                'Authorization' => 'Bearer f91898e8-20b8-4c2c-834d-663d169449ba'
+                'Authorization' => 'Bearer ' . env('WANIKANI_API_KEY', 'none')
             ]
         ]);
         $this->cdnClient = new Client();
@@ -432,12 +432,24 @@ class WaniKani
     public function cacheItems(Command $command)
     {
         $command->info('Adding Items to Cache...');
+        Cache::tags('wanikani')->put('burned_items', $this->getBurnedItems(), 120);
         Cache::tags('wanikani')->put('study_queue', $this->getStudyQueue(), 120);
         Cache::tags('wanikani')->put('srs_distribution', $this->getSrsDistribution(), 120);
         Cache::tags('wanikani')->put('recent_unlocks', $this->getRecentUnlocks(), 120);
         Cache::tags('wanikani')->put('critical_items', $this->getCriticalItems(), 120);
         $this->getLevels();
         Cache::tags('wanikani')->put('user', User::first(), 120);
+    }
+
+    private function getBurnedItems()
+    {
+        $burned_items = [];
+        $burned_items['total'] = Subject::count();
+        $burned_items['burned'] = Subject::whereHas('assignment', function($query) {
+            $query->where('srs_stage', 9);
+        })->count();
+
+        return $burned_items;
     }
 
     private function getStudyQueue()
