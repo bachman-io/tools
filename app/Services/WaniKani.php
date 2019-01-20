@@ -53,47 +53,45 @@ class WaniKani
             DB::table('subjects')->truncate();
             $command->comment('Truncating SRS Stages...');
             DB::table('srs_stages')->truncate();
-            $command->comment('Truncating Users...');
-            DB::table('users')->truncate();
         }
+        $command->comment('Truncating Users...');
+        DB::table('users')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         $command->comment('Done!');
     }
 
     public function updateUser(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
-            $command->info('Updating User...');
-            $response = $this->apiClient->get('user');
-            $u = json_decode($response->getBody(), true)['data'];
+        $command->info('Updating User...');
+        $response = $this->apiClient->get('user');
+        $u = json_decode($response->getBody(), true)['data'];
 
-            $user = new User;
-            $user->id = $u['id'];
-            $user->username = $u['username'];
-            $user->level = $u['level'];
-            $user->max_level_granted_by_subscription = $u['max_level_granted_by_subscription'];
-            $user->profile_url = $u['profile_url'];
-            $user->started_at = Carbon::createFromFormat(
+        $user = new User;
+        $user->id = $u['id'];
+        $user->username = $u['username'];
+        $user->level = $u['level'];
+        $user->max_level_granted_by_subscription = $u['max_level_granted_by_subscription'];
+        $user->profile_url = $u['profile_url'];
+        $user->started_at = Carbon::createFromFormat(
+            \DateTime::ISO8601,
+            substr(
+                $u['started_at'],
+                0,
+                strpos($u['started_at'], ".")
+            ) . '+0000');
+        $user->subscribed = $u['subscribed'];
+        $user->current_vacation_started_at = is_null($u['current_vacation_started_at'])
+            ? null
+            : Carbon::createFromFormat(
                 \DateTime::ISO8601,
                 substr(
-                    $u['started_at'],
+                    $u['current_vacation_started_at'],
                     0,
-                    strpos($u['started_at'], ".")
+                    strpos($u['current_vacation_started_at'], ".")
                 ) . '+0000');
-            $user->subscribed = $u['subscribed'];
-            $user->current_vacation_started_at = is_null($u['current_vacation_started_at'])
-                ? null
-                : Carbon::createFromFormat(
-                    \DateTime::ISO8601,
-                    substr(
-                        $u['current_vacation_started_at'],
-                        0,
-                        strpos($u['current_vacation_started_at'], ".")
-                    ) . '+0000');
 
-            $user->save();
-            $command->comment('Done!');
-        }
+        $user->save();
+        $command->comment('Done!');
     }
 
     public function updateSrsStages(Command $command)
