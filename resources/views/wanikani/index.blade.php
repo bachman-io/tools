@@ -107,10 +107,9 @@
         <thead class="thead-light">
         <tr>
             <th scope="col" class="text-center">SRS Stage</th>
-            @if($user['level'] <= 3)
+            @if($user['level'] <= 2)
                 <th scope="col" class="text-center">Accelerated Interval <a data-toggle="tooltip" data-placement="top" data-original-title="The accelerated interval is used for the first two levels of assignments.">[?]</a></th>
-            @endif
-            @if($user['level'] >= 3)
+            @else
                 <th scope="col" class="text-center">Interval</th>
             @endif
             <th scope="col" class="text-center">Total</th>
@@ -124,10 +123,9 @@
             @if($stage['total'] > 0)
                 <tr>
                     <th scope="row" class="text-center">{{ $stage['name'] }}</th>
-                    @if($user['level'] <= 3)
+                    @if($user['level'] <= 2)
                     <td class="text-center">{{ $stage['acc_interval'] }}</td>
-                    @endif
-                    @if($user['level'] >= 3)
+                    @else
                         <td class="text-center">{{ $stage['interval'] }}</td>
                     @endif
                     <td class="text-center">{{ number_format($stage['total']) }}</td>
