@@ -70,7 +70,7 @@ class WaniKani
         $user->id = $u['id'];
         $user->username = $u['username'];
         $user->level = $u['level'];
-        $user->max_level_granted_by_subscription = $u['max_level_granted_by_subscription'];
+        $user->max_level_granted_by_subscription = $u['subscription']['max_level_granted'];
         $user->profile_url = $u['profile_url'];
         $user->started_at = Carbon::createFromFormat(
             \DateTime::ISO8601,
@@ -79,7 +79,7 @@ class WaniKani
                 0,
                 strpos($u['started_at'], ".")
             ) . '+0000');
-        $user->subscribed = $u['subscribed'];
+        $user->subscribed = $u['subscription']['active'];
         $user->current_vacation_started_at = is_null($u['current_vacation_started_at'])
             ? null
             : Carbon::createFromFormat(
