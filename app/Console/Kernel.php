@@ -24,7 +24,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('wanikani:update')->everyThirtyMinutes();
+        $schedule->command('wanikani:update')->everyTenMinutes();
     }
 
     /**

@@ -42,7 +42,9 @@ class Update extends Command
         $this->info('Begin Update of WaniKani Resources');
         $this->comment('---');
         $wk = new WaniKani;
-        $wk->truncateTables($this);
+        if($this->option('force')) {
+            $wk->truncateTables($this);
+        }
         $wk->updateUser($this);
         $wk->updateSrsStages($this);
         $wk->updateSubjects($this);

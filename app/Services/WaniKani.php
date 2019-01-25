@@ -19,6 +19,7 @@ class WaniKani
 {
     private $apiClient;
     private $cdnClient;
+    private $etags;
 
     public function __construct()
     {
@@ -44,16 +45,12 @@ class WaniKani
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         $command->comment('Truncating Review Statistics...');
         DB::table('review_statistics')->truncate();
-        $command->comment('Truncating Summaries...');
-        DB::table('summaries')->truncate();
         $command->comment('Truncating Assignments...');
         DB::table('assignments')->truncate();
-        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
-            $command->comment('Truncating Subjects...');
-            DB::table('subjects')->truncate();
-            $command->comment('Truncating SRS Stages...');
-            DB::table('srs_stages')->truncate();
-        }
+        $command->comment('Truncating Subjects...');
+        DB::table('subjects')->truncate();
+        $command->comment('Truncating SRS Stages...');
+        DB::table('srs_stages')->truncate();
         $command->comment('Truncating Users...');
         DB::table('users')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
@@ -63,46 +60,84 @@ class WaniKani
     public function updateUser(Command $command)
     {
         $command->info('Updating User...');
-        $response = $this->apiClient->get('user');
-        $u = json_decode($response->getBody(), true)['data'];
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('user', ''));
+        }
 
-        $user = new User;
-        $user->id = $u['id'];
-        $user->username = $u['username'];
-        $user->level = $u['level'];
-        $user->max_level_granted_by_subscription = $u['subscription']['max_level_granted'];
-        $user->profile_url = $u['profile_url'];
-        $user->started_at = Carbon::createFromFormat(
-            \DateTime::ISO8601,
-            substr(
-                $u['started_at'],
-                0,
-                strpos($u['started_at'], ".")
-            ) . '+0000');
-        $user->subscribed = $u['subscription']['active'];
-        $user->current_vacation_started_at = is_null($u['current_vacation_started_at'])
-            ? null
-            : Carbon::createFromFormat(
+        $response = $this->apiClient->get(
+            'user',
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('user', '')
+                ]
+            ]);
+
+        if ($response->getStatusCode() === 200) {
+            $u = json_decode($response->getBody(), true)['data'];
+            Cache::tags('wanikani_etags')->put('user', $response->getHeader('ETag')[0], 525600);
+
+            $user = User::find($u['id']);
+
+            if(is_null($user)) {
+                $user = new User;
+            }
+
+            $user->id = $u['id'];
+            $user->username = $u['username'];
+            $user->level = $u['level'];
+            $user->max_level_granted_by_subscription = $u['subscription']['max_level_granted'];
+            $user->profile_url = $u['profile_url'];
+            $user->started_at = Carbon::createFromFormat(
                 \DateTime::ISO8601,
                 substr(
-                    $u['current_vacation_started_at'],
+                    $u['started_at'],
                     0,
-                    strpos($u['current_vacation_started_at'], ".")
+                    strpos($u['started_at'], ".")
                 ) . '+0000');
+            $user->subscribed = $u['subscription']['active'];
+            $user->current_vacation_started_at = is_null($u['current_vacation_started_at'])
+                ? null
+                : Carbon::createFromFormat(
+                    \DateTime::ISO8601,
+                    substr(
+                        $u['current_vacation_started_at'],
+                        0,
+                        strpos($u['current_vacation_started_at'], ".")
+                    ) . '+0000');
 
-        $user->save();
-        $command->comment('Done!');
+            $user->save();
+            $command->comment('Done!');
+        } else {
+            $command->comment('Nothing to update.');
+        }
     }
 
     public function updateSrsStages(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
-            $command->info('Updating SRS Stages...');
-            $response = $this->apiClient->get('srs_stages');
+        $command->info('Updating SRS Stages...');
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('srs_stages', ''));
+        }
+
+        $response = $this->apiClient->get(
+            'srs_stages',
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('srs_stages', '')
+                ]
+            ]);
+
+        if ($response->getStatusCode() === 200) {
             $srs_stages = json_decode($response->getBody(), true)['data'];
+            Cache::tags('wanikani_etags')->put('srs_stages', $response->getHeader('ETag')[0], 525600);
 
             foreach ($srs_stages as $srs_stage) {
-                $srs = new SrsStage;
+                $srs = SrsStage::find($srs_stage['srs_stage']);
+
+                if(is_null($srs)) {
+                    $srs = new SrsStage;
+                }
+
                 $srs->srs_stage = $srs_stage['srs_stage'];
                 $srs->srs_stage_name = $srs_stage['srs_stage_name'];
                 $srs->interval = $srs_stage['interval'];
@@ -111,320 +146,448 @@ class WaniKani
                 $srs->save();
             }
             $command->comment('Done!');
+        } else {
+            $command->comment('Nothing to update.');
         }
     }
 
     public function updateSubjects(Command $command)
     {
-        if ($command->option('force') || (Carbon::now()->hour === 8 && Carbon::now()->minute === 0)) {
-            $command->info('Updating Subjects...');
-            $next_page_url = 'https://api.wanikani.com/v2/subjects?hidden=false';
-            $response = $this->apiClient->get($next_page_url);
+        $command->info('Updating Subjects...');
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('subjects', ''));
+            $command->comment('Updated After: '
+                . Cache::tags('wanikani_updated')->get('subjects', '2000-01-01T00:00:00.000000Z'));
+        }
+
+        $next_page_url = 'https://api.wanikani.com/v2/subjects'
+            . '?hidden=false'
+        . '&updated_after=' . Cache::tags('wanikani_updated')->get('subjects', '2000-01-01T00:00:00.000000Z');
+
+        $response = $this->apiClient->get(
+            $next_page_url,
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('subjects', '')
+                ]
+            ]);
+
+        if ($response->getStatusCode() === 200) {
             $total = json_decode($response->getBody(), true)['total_count'];
-            $bar = $command->getOutput()->createProgressBar($total);
-            $bar->start();
 
-            while (!is_null($next_page_url)) {
-                $response = $this->apiClient->get($next_page_url);
-                $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
-                $subjects = json_decode($response->getBody(), true)['data'];
+            Cache::tags('wanikani_etags')->put('subjects', $response->getHeader('ETag')[0], 525600);
 
-                foreach ($subjects as $s) {
-                    $subject = new Subject;
+            if ($total > 0) {
+                Cache::tags('wanikani_updated')->put('subjects',
+                    json_decode($response->getBody(), true)['data_updated_at'], 525600);
 
-                    $subject->id = $s['id'];
-                    $subject->object = $s['object'];
-                    $subject->data_updated_at = Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $s['data_updated_at'],
-                            0,
-                            strpos($s['data_updated_at'], ".")
-                        ) . '+0000');
+                $bar = $command->getOutput()->createProgressBar($total);
+                $bar->start();
 
-                    $subject->level = $s['data']['level'];
+                while (!is_null($next_page_url)) {
+                    $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
+                    $subjects = json_decode($response->getBody(), true)['data'];
 
-                    $subject->characters = $s['data']['characters'];
+                    foreach ($subjects as $s) {
+                        $subject = Subject::find($s['id']);
 
-                    //TODO: Follow up with WaniKani on missing Coral radical SVG, it's throwing a 403
-                    if ($s['object'] === 'radical' && is_null($s['data']['characters'])) {
-                        foreach ($s['data']['character_images'] as $character_image) {
-                            if ($character_image['content_type'] === 'image/svg+xml'
-                                && $character_image['metadata']['inline_styles'] == false) {
-                                try {
-                                    $svg = $this->cdnClient->get($character_image['url']);
-                                    $subject->character_image = (string)$svg->getBody();
-                                } catch (\Exception $exception) {
-                                    $subject->character_image = null;
-                                    $subject->characters = '?';
+                        if (is_null($subject)) {
+                            $subject = new Subject;
+                        }
+
+                        $subject->id = $s['id'];
+                        $subject->object = $s['object'];
+                        $subject->data_updated_at = Carbon::createFromFormat(
+                            \DateTime::ISO8601,
+                            substr(
+                                $s['data_updated_at'],
+                                0,
+                                strpos($s['data_updated_at'], ".")
+                            ) . '+0000');
+
+                        $subject->level = $s['data']['level'];
+
+                        $subject->characters = $s['data']['characters'];
+
+                        //TODO: Follow up with WaniKani on missing Coral radical SVG, it's throwing a 403
+                        if ($s['object'] === 'radical' && is_null($s['data']['characters'])) {
+                            foreach ($s['data']['character_images'] as $character_image) {
+                                if ($character_image['content_type'] === 'image/svg+xml'
+                                    && $character_image['metadata']['inline_styles'] == false) {
+                                    try {
+                                        $svg = $this->cdnClient->get($character_image['url']);
+                                        $subject->character_image = (string)$svg->getBody();
+                                    } catch (\Exception $exception) {
+                                        $subject->character_image = null;
+                                        $subject->characters = '?';
+                                    }
                                 }
                             }
+                        } else {
+                            $subject->character_image = null;
                         }
-                    } else {
-                        $subject->character_image = null;
-                    }
 
-                    $temp_meanings = [];
+                        $temp_meanings = [];
 
-                    foreach ($s['data']['meanings'] as $meaning) {
-                        if ($meaning['accepted_answer'] === true) {
-                            $temp_meanings[] = $meaning['meaning'];
-                        }
-                    }
-
-                    $subject->meanings = implode(', ', $temp_meanings);
-
-                    $subject->document_url = $s['data']['document_url'];
-
-                    if ($s['object'] === 'radical' || $s['object'] === 'kanji') {
-                        $subject->amalgamation_subject_ids = implode(', ', $s['data']['amalgamation_subject_ids']);
-                    }
-
-                    if ($s['object'] === 'vocabulary' || $s['object'] === 'kanji') {
-                        $subject->component_subject_ids = implode(', ', $s['data']['component_subject_ids']);
-                    }
-
-                    if ($s['object'] === 'kanji') {
-                        $on_yomi = [];
-                        $kun_yomi = [];
-                        $nanori = [];
-
-                        foreach ($s['data']['readings'] as $reading) {
-                            switch ($reading['type']) {
-                                case 'onyomi':
-                                    $on_yomi[] = $reading['reading'];
-                                    break;
-                                case 'kunyomi':
-                                    $kun_yomi[] = $reading['reading'];
-                                    break;
-                                case 'nanori':
-                                    $nanori[] = $reading['reading'];
-                                    break;
+                        foreach ($s['data']['meanings'] as $meaning) {
+                            if ($meaning['accepted_answer'] === true) {
+                                $temp_meanings[] = $meaning['meaning'];
                             }
                         }
 
-                        $subject->on_yomi = !empty($on_yomi) ? implode(', ', $on_yomi) : null;
-                        $subject->kun_yomi = !empty($kun_yomi) ? implode(', ', $kun_yomi) : null;
-                        $subject->nanori = !empty($nanori) ? implode(', ', $nanori) : null;
-                    } else {
-                        $subject->on_yomi = null;
-                        $subject->kun_yomi = null;
-                        $subject->nanori = null;
-                    }
+                        $subject->meanings = implode(', ', $temp_meanings);
 
-                    if ($s['object'] === 'vocabulary') {
-                        $readings = [];
-                        foreach ($s['data']['readings'] as $reading) {
-                            if ($reading['accepted_answer'] === true) {
-                                $readings[] = $reading['reading'];
-                            }
+                        $subject->document_url = $s['data']['document_url'];
+
+                        if ($s['object'] === 'radical' || $s['object'] === 'kanji') {
+                            $subject->amalgamation_subject_ids = implode(', ', $s['data']['amalgamation_subject_ids']);
                         }
-                        $subject->kana = implode(', ', $readings);
-                        $subject->parts_of_speech = implode(', ', $s['data']['parts_of_speech']);
-                    } else {
-                        $subject->kana = null;
-                        $subject->parts_of_speech = null;
-                    }
 
-                    $subject->save();
-                    $bar->advance();
+                        if ($s['object'] === 'vocabulary' || $s['object'] === 'kanji') {
+                            $subject->component_subject_ids = implode(', ', $s['data']['component_subject_ids']);
+                        }
+
+                        if ($s['object'] === 'kanji') {
+                            $on_yomi = [];
+                            $kun_yomi = [];
+                            $nanori = [];
+
+                            foreach ($s['data']['readings'] as $reading) {
+                                switch ($reading['type']) {
+                                    case 'onyomi':
+                                        $on_yomi[] = $reading['reading'];
+                                        break;
+                                    case 'kunyomi':
+                                        $kun_yomi[] = $reading['reading'];
+                                        break;
+                                    case 'nanori':
+                                        $nanori[] = $reading['reading'];
+                                        break;
+                                }
+                            }
+
+                            $subject->on_yomi = !empty($on_yomi) ? implode(', ', $on_yomi) : null;
+                            $subject->kun_yomi = !empty($kun_yomi) ? implode(', ', $kun_yomi) : null;
+                            $subject->nanori = !empty($nanori) ? implode(', ', $nanori) : null;
+                        } else {
+                            $subject->on_yomi = null;
+                            $subject->kun_yomi = null;
+                            $subject->nanori = null;
+                        }
+
+                        if ($s['object'] === 'vocabulary') {
+                            $readings = [];
+                            foreach ($s['data']['readings'] as $reading) {
+                                if ($reading['accepted_answer'] === true) {
+                                    $readings[] = $reading['reading'];
+                                }
+                            }
+                            $subject->kana = implode(', ', $readings);
+                            $subject->parts_of_speech = implode(', ', $s['data']['parts_of_speech']);
+                        } else {
+                            $subject->kana = null;
+                            $subject->parts_of_speech = null;
+                        }
+
+                        $subject->save();
+                        $bar->advance();
+                    }
+                    if (!is_null($next_page_url)) {
+                        $response = $this->apiClient->get($next_page_url);
+                    }
                 }
+                $bar->finish();
+                echo PHP_EOL;
+            } else {
+                $command->comment('Nothing to update.');
             }
-            $bar->finish();
-            echo PHP_EOL;
+        } else {
+            $command->comment('Nothing to update.');
         }
     }
 
     public function updateAssignments(Command $command)
     {
         $command->info('Updating Assignments...');
-        $next_page_url = 'https://api.wanikani.com/v2/assignments?unlocked=true&hidden=false';
-        $response = $this->apiClient->get($next_page_url);
-        $total = json_decode($response->getBody(), true)['total_count'];
-        $bar = $command->getOutput()->createProgressBar($total);
-        $bar->start();
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('assignments', ''));
+            $command->comment('Updated After: '
+                . Cache::tags('wanikani_updated')->get('assignments', '2000-01-01T00:00:00.000000Z'));
+        }
 
-        while (!is_null($next_page_url)) {
-            $response = $this->apiClient->get($next_page_url);
-            $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
-            $assignments = json_decode($response->getBody(), true)['data'];
+        $next_page_url = 'https://api.wanikani.com/v2/assignments'
+            . '?unlocked=true'
+            . '&hidden=false'
+            . '&updated_after=' . Cache::tags('wanikani_updated')->get('assignments', '2000-01-01T00:00:00.000000Z');
 
-            foreach ($assignments as $a) {
-                $assignment = new Assignment;
+        $response = $this->apiClient->get(
+            $next_page_url,
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('assignments', '')
+                ]
+            ]);
 
-                $assignment->id = $a['id'];
-                $assignment->data_updated_at = Carbon::createFromFormat(
-                    \DateTime::ISO8601,
-                    substr(
-                        $a['data_updated_at'],
-                        0,
-                        strpos($a['data_updated_at'], ".")
-                    ) . '+0000');
+        if ($response->getStatusCode() === 200) {
+            $total = json_decode($response->getBody(), true)['total_count'];
 
-                $assignment->subject_id = $a['data']['subject_id'];
-                $assignment->srs_stage = $a['data']['srs_stage'];
-                $assignment->unlocked_at = is_null($a['data']['unlocked_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['unlocked_at'],
-                            0,
-                            strpos($a['data']['unlocked_at'], ".")
-                        ) . '+0000');
-                $assignment->started_at = is_null($a['data']['started_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['started_at'],
-                            0,
-                            strpos($a['data']['started_at'], ".")
-                        ) . '+0000');
-                $assignment->passed_at = is_null($a['data']['passed_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['passed_at'],
-                            0,
-                            strpos($a['data']['passed_at'], ".")
-                        ) . '+0000');
-                $assignment->burned_at = is_null($a['data']['burned_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['burned_at'],
-                            0,
-                            strpos($a['data']['burned_at'], ".")
-                        ) . '+0000');
-                $assignment->available_at = is_null($a['data']['available_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['available_at'],
-                            0,
-                            strpos($a['data']['available_at'], ".")
-                        ) . '+0000');
-                $assignment->resurrected_at = is_null($a['data']['resurrected_at'])
-                    ? null
-                    : Carbon::createFromFormat(
-                        \DateTime::ISO8601,
-                        substr(
-                            $a['data']['resurrected_at'],
-                            0,
-                            strpos($a['data']['resurrected_at'], ".")
-                        ) . '+0000');
+            Cache::tags('wanikani_etags')->put('assignments', $response->getHeader('ETag')[0], 525600);
 
-                $assignment->passed = $a['data']['passed'];
-                $assignment->resurrected = $a['data']['resurrected'];
+            if ($total > 0) {
+                Cache::tags('wanikani_updated')->put('assignments',
+                    json_decode($response->getBody(), true)['data_updated_at'], 525600);
 
-                $assignment->save();
-                $bar->advance();
+                $bar = $command->getOutput()->createProgressBar($total);
+                $bar->start();
+
+                while (!is_null($next_page_url)) {
+                    $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
+                    $assignments = json_decode($response->getBody(), true)['data'];
+
+                    foreach ($assignments as $a) {
+                        $assignment = Assignment::find($a['id']);
+
+                        if (is_null($assignment)) {
+                            $assignment = new Assignment;
+                        }
+
+                        $assignment->id = $a['id'];
+                        $assignment->data_updated_at = Carbon::createFromFormat(
+                            \DateTime::ISO8601,
+                            substr(
+                                $a['data_updated_at'],
+                                0,
+                                strpos($a['data_updated_at'], ".")
+                            ) . '+0000');
+
+                        $assignment->subject_id = $a['data']['subject_id'];
+                        $assignment->srs_stage = $a['data']['srs_stage'];
+                        $assignment->unlocked_at = is_null($a['data']['unlocked_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['unlocked_at'],
+                                    0,
+                                    strpos($a['data']['unlocked_at'], ".")
+                                ) . '+0000');
+                        $assignment->started_at = is_null($a['data']['started_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['started_at'],
+                                    0,
+                                    strpos($a['data']['started_at'], ".")
+                                ) . '+0000');
+                        $assignment->passed_at = is_null($a['data']['passed_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['passed_at'],
+                                    0,
+                                    strpos($a['data']['passed_at'], ".")
+                                ) . '+0000');
+                        $assignment->burned_at = is_null($a['data']['burned_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['burned_at'],
+                                    0,
+                                    strpos($a['data']['burned_at'], ".")
+                                ) . '+0000');
+                        $assignment->available_at = is_null($a['data']['available_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['available_at'],
+                                    0,
+                                    strpos($a['data']['available_at'], ".")
+                                ) . '+0000');
+                        $assignment->resurrected_at = is_null($a['data']['resurrected_at'])
+                            ? null
+                            : Carbon::createFromFormat(
+                                \DateTime::ISO8601,
+                                substr(
+                                    $a['data']['resurrected_at'],
+                                    0,
+                                    strpos($a['data']['resurrected_at'], ".")
+                                ) . '+0000');
+
+                        $assignment->passed = $a['data']['passed'];
+                        $assignment->resurrected = $a['data']['resurrected'];
+
+                        $assignment->save();
+                        $bar->advance();
+                    }
+                    if (!is_null($next_page_url)) {
+                        $response = $this->apiClient->get($next_page_url);
+                    }
+                }
+                $bar->finish();
+                echo PHP_EOL;
+            } else {
+                $command->comment('Nothing to update.');
             }
+        } else {
+            $command->comment('Nothing to update.');
         }
-        $bar->finish();
-        echo PHP_EOL;
-    }
-
-    public function updateSummaries(Command $command)
-    {
-        $command->info('Updating Summaries...');
-
-        $response = $this->apiClient->get('summary');
-        $sy = json_decode($response->getBody(), true)['data'];
-
-        $summary = new Summary;
-
-        $summary->type = 'lessons';
-        $summary->hours_from_now = 0;
-        $summary->available_at = Carbon::createFromFormat(
-            \DateTime::ISO8601,
-            substr(
-                $sy['lessons'][0]['available_at'],
-                0,
-                strpos($sy['lessons'][0]['available_at'], ".")
-            ) . '+0000');
-
-        $summary->subject_ids = empty($sy['lessons'][0]['subject_ids'])
-            ? null
-            : implode(', ', $sy['lessons'][0]['subject_ids']);
-
-        $summary->save();
-
-        $hours = 0;
-
-        foreach ($sy['reviews'] as $review) {
-            $summary = new Summary;
-
-            $summary->type = 'reviews';
-            $summary->hours_from_now = $hours;
-            $summary->available_at = Carbon::createFromFormat(
-                \DateTime::ISO8601,
-                substr(
-                    $review['available_at'],
-                    0,
-                    strpos($review['available_at'], ".")
-                ) . '+0000');
-
-            $summary->subject_ids = empty($review['subject_ids'])
-                ? null
-                : implode(', ', $review['subject_ids']);
-
-            $summary->save();
-            $hours++;
-        }
-        $command->comment('Done!');
     }
 
     public function updateReviewStatistics(Command $command)
     {
         $command->info('Updating Review Statistics...');
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('review_statistics', ''));
+            $command->comment('Updated After: '
+                . Cache::tags('wanikani_updated')->get('review_statistics', '2019-01-05T00:00:00.000000Z'));
+        }
+
         $next_page_url
-            = 'https://api.wanikani.com/v2/review_statistics?hidden=false&updated_after=2019-01-05T00:00:00.000000Z';
-        $response = $this->apiClient->get($next_page_url);
-        $total = json_decode($response->getBody(), true)['total_count'];
-        $bar = $command->getOutput()->createProgressBar($total);
-        $bar->start();
+            = 'https://api.wanikani.com/v2/review_statistics'
+            . '?hidden=false'
+            . '&updated_after=' . Cache::tags('wanikani_updated')->get('review_statistics',
+                '2019-01-05T00:00:00.000000Z');
 
-        while (!is_null($next_page_url)) {
-            $response = $this->apiClient->get($next_page_url);
-            $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
-            $review_statistics = json_decode($response->getBody(), true)['data'];
+        $response = $this->apiClient->get(
+            $next_page_url,
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('review_statistics', '')
+                ]
+            ]);
 
-            foreach ($review_statistics as $r) {
-                $review_statistic = new ReviewStatistic;
+        if ($response->getStatusCode() === 200) {
+            $total = json_decode($response->getBody(), true)['total_count'];
+            Cache::tags('wanikani_etags')->put('review_statistics', $response->getHeader('ETag')[0], 525600);
 
-                $review_statistic->id = $r['id'];
-                $review_statistic->data_updated_at = Carbon::createFromFormat(
+            if ($total > 0) {
+                Cache::tags('wanikani_updated')->put('review_statistics',
+                    json_decode($response->getBody(), true)['data_updated_at'], 525600);
+
+                $bar = $command->getOutput()->createProgressBar($total);
+                $bar->start();
+
+                while (!is_null($next_page_url)) {
+                    $next_page_url = json_decode($response->getBody(), true)['pages']['next_url'];
+                    $review_statistics = json_decode($response->getBody(), true)['data'];
+
+                    foreach ($review_statistics as $r) {
+                        $review_statistic = ReviewStatistic::find($r['id']);
+
+                        if (is_null($review_statistic)) {
+                            $review_statistic = new ReviewStatistic;
+                        }
+
+                        $review_statistic->id = $r['id'];
+                        $review_statistic->data_updated_at = Carbon::createFromFormat(
+                            \DateTime::ISO8601,
+                            substr(
+                                $r['data_updated_at'],
+                                0,
+                                strpos($r['data_updated_at'], ".")
+                            ) . '+0000');
+
+                        $review_statistic->subject_id = $r['data']['subject_id'];
+                        $review_statistic->meaning_correct = $r['data']['meaning_correct'];
+                        $review_statistic->meaning_incorrect = $r['data']['meaning_incorrect'];
+                        $review_statistic->meaning_max_streak = $r['data']['meaning_max_streak'];
+                        $review_statistic->meaning_current_streak = $r['data']['meaning_current_streak'];
+
+                        $review_statistic->reading_correct = $r['data']['reading_correct'];
+                        $review_statistic->reading_incorrect = $r['data']['reading_incorrect'];
+                        $review_statistic->reading_max_streak = $r['data']['reading_max_streak'];
+                        $review_statistic->reading_current_streak = $r['data']['reading_current_streak'];
+
+                        $review_statistic->percentage_correct = $r['data']['percentage_correct'];
+
+                        $review_statistic->save();
+                        $bar->advance();
+                    }
+                    if (!is_null($next_page_url)) {
+                        $response = $this->apiClient->get($next_page_url);
+                    }
+                }
+                $bar->finish();
+                echo PHP_EOL;
+            } else {
+                $command->comment('Nothing to update.');
+            }
+        } else {
+            $command->comment('Nothing to update.');
+        }
+    }
+
+    public function updateSummaries(Command $command)
+    {
+        $command->info('Updating Summaries...');
+        if ($command->getOutput()->isDebug()) {
+            $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('summary', ''));
+        }
+
+        $response = $this->apiClient->get(
+            'summary',
+            [
+                'headers' => [
+                    'If-None-Match' => Cache::tags('wanikani_etags')->get('summary', '')
+                ]
+            ]);
+
+        if ($response->getStatusCode() === 200) {
+            $sy = json_decode($response->getBody(), true)['data'];
+            Cache::tags('wanikani_etags')->put('summary', $response->getHeader('ETag')[0], 525600);
+
+            $command->comment('Truncating DB table and refreshing data...');
+
+            DB::table('summaries')->truncate();
+
+            $summary = new Summary;
+
+            $summary->type = 'lessons';
+            $summary->hours_from_now = 0;
+            $summary->available_at = Carbon::createFromFormat(
+                \DateTime::ISO8601,
+                substr(
+                    $sy['lessons'][0]['available_at'],
+                    0,
+                    strpos($sy['lessons'][0]['available_at'], ".")
+                ) . '+0000');
+
+            $summary->subject_ids = empty($sy['lessons'][0]['subject_ids'])
+                ? null
+                : implode(', ', $sy['lessons'][0]['subject_ids']);
+
+            $summary->save();
+
+            $hours = 0;
+
+            foreach ($sy['reviews'] as $review) {
+                $summary = new Summary;
+
+                $summary->type = 'reviews';
+                $summary->hours_from_now = $hours;
+                $summary->available_at = Carbon::createFromFormat(
                     \DateTime::ISO8601,
                     substr(
-                        $r['data_updated_at'],
+                        $review['available_at'],
                         0,
-                        strpos($r['data_updated_at'], ".")
+                        strpos($review['available_at'], ".")
                     ) . '+0000');
 
-                $review_statistic->subject_id = $r['data']['subject_id'];
-                $review_statistic->meaning_correct = $r['data']['meaning_correct'];
-                $review_statistic->meaning_incorrect = $r['data']['meaning_incorrect'];
-                $review_statistic->meaning_max_streak = $r['data']['meaning_max_streak'];
-                $review_statistic->meaning_current_streak = $r['data']['meaning_current_streak'];
+                $summary->subject_ids = empty($review['subject_ids'])
+                    ? null
+                    : implode(', ', $review['subject_ids']);
 
-                $review_statistic->reading_correct = $r['data']['reading_correct'];
-                $review_statistic->reading_incorrect = $r['data']['reading_incorrect'];
-                $review_statistic->reading_max_streak = $r['data']['reading_max_streak'];
-                $review_statistic->reading_current_streak = $r['data']['reading_current_streak'];
-
-                $review_statistic->percentage_correct = $r['data']['percentage_correct'];
-
-                $review_statistic->save();
-                $bar->advance();
+                $summary->save();
+                $hours++;
             }
+            $command->comment('Done!');
+        } else {
+            $command->comment('Nothing to update.');
         }
-        $bar->finish();
-        echo PHP_EOL;
     }
 
     public function cacheItems(Command $command)
