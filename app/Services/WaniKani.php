@@ -528,17 +528,14 @@ class WaniKani
             $command->comment('ETag: ' . Cache::tags('wanikani_etags')->get('summary', ''));
         }
 
-        $response = $this->apiClient->get(
-            'summary',
-            [
-                'headers' => [
-                    'If-None-Match' => Cache::tags('wanikani_etags')->get('summary', '')
-                ]
-            ]);
+        $response = $this->apiClient->get('summary');
 
-        if ($response->getStatusCode() === 200) {
+        $data_updated_at = json_decode($response->getBody(), true)['data_updated_at'];
+
+        if ($data_updated_at !== Cache::tags('wanikani_updated')->get('summary')) {
             $sy = json_decode($response->getBody(), true)['data'];
             Cache::tags('wanikani_etags')->put('summary', $response->getHeader('ETag')[0], 525600);
+            Cache::tags('wanikani_updated')->put('summary', $data_updated_at, 525600);
 
             $command->comment('Truncating DB table and refreshing data...');
 
