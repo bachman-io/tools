@@ -13,6 +13,7 @@ class WaniKaniController extends Controller
         if(Cache::tags('wanikani')->has('user')){
             $data = $this->getSummary();
             $data['title'] = 'WaniKani - Tools - Bachman I/O';
+            $data['type_names'] = ['Radicals', 'Kanji', 'Vocabulary'];
             //dd($data);
             return view('wanikani.index', $data);
         } else {

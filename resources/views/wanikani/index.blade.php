@@ -152,18 +152,22 @@
         <thead class="thead-light">
         <tr>
             <th scope="col" class="text-center" width="5%">Level</th>
+            <th scope="col" class="text-center" width="10%">Type</th>
             <th scope="col" class="text-center" width="5%">Lessons Pending</th>
-            <th scope="col" class="text-center" width="90%">Items</th>
+            <th scope="col" class="text-center" width="80%">Items</th>
         </tr>
         </thead>
         <tbody>
         @forelse($study_queue['lessons']['subjects'] as $level => $types)
+            @foreach($types as $type => $items)
         <tr>
-            <th scope="row" class="text-center">{{ $level }}</th>
-            <td class="text-center">{{ number_format($study_queue['lessons']['totals'][$level]) }}</td>
+            @if($type === 0)
+            <th scope="row" rowspan="3" class="text-center">{{ $level }}</th>
+            @endif
+                <th scope="row" class="text-center">{{ $type_names[$type] }}</th>
+            <td class="text-center">{{ number_format($study_queue['lessons']['totals'][$level][$type]) }}</td>
             <td class="text-center">
-                @foreach($types as $items => $objects)
-                    @foreach($objects as $item)
+                    @forelse($items as $item)
                         <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
                             <span lang="ja" class="no-wrap"
                     @switch($item->object)
@@ -186,9 +190,11 @@
                     </span>
                         </a>
                                 &nbsp;
-                    @endforeach
-                @endforeach
+                        @empty
+                        <span>(None)</span>
+                    @endforelse
             </td>
+            @endforeach
         </tr>
         @empty
         <tr>
@@ -203,47 +209,55 @@
             <thead class="thead-light">
             <tr>
                 <th scope="col" class="text-center" width="5%">Level</th>
-                <th scope="col" class="text-center" width="5%">Reviews Pending</th>
-                <th scope="col" class="text-center" width="90%">Items</th>
+                <th scope="col" class="text-center" width="10%">Type</th>
+                <th scope="col" class="text-center" width="5%">Lessons Pending</th>
+                <th scope="col" class="text-center" width="80%">Items</th>
             </tr>
             </thead>
             <tbody>
             @forelse($review['subjects'] as $level => $types)
-                <tr>
-                    <th scope="row" class="text-center">{{ $level }}</th>
-                    <td class="text-center">{{ $review['totals'][$level] }}</td>
-                    <td class="text-center">
-                        @foreach($types as $items => $objects)
-                            @foreach($objects as $item)
+                @foreach($types as $type => $items)
+                    <tr>
+                        @if($type === 0)
+                            <th scope="row" rowspan="3" class="text-center">{{ $level }}</th>
+                        @endif
+                        <th scope="row" class="text-center">{{ $type_names[$type] }}</th>
+                        <td class="text-center">{{ number_format($review['totals'][$level][$type]) }}</td>
+                        <td class="text-center">
+                            @forelse($items as $item)
                                 <a href="{{ $item->document_url }}" target="_blank" rel="noopener" data-toggle="tooltip" data-placement="top" data-original-title="{{ $item->meanings }}">
-                                    @switch($item->object)
-                                        @case('radical')
-                                        <span lang="ja"  class="no-wrap" style="background: #0093dd;">
-                        @break
-                                            @case('kanji')
-                            <span lang="ja"  class="no-wrap" style="background: #dd0093;">
-                        @break
-                                @case('vocabulary')
-                                <span lang="ja"  class="no-wrap" style="background: #9300dd;">
+                            <span lang="ja" class="no-wrap"
+                                  @switch($item->object)
+                                  @case('radical')
+                                  style="background: #0093dd;"
+                                  @break
+                                  @case('kanji')
+                                  style="background: #dd0093;"
+                                  @break
+                                  @case('vocabulary')
+                                  style="background: #9300dd;"
                         @break
                                     @endswitch
-                                    @if(!is_null($item->character_image))
-                                        {!! $item->character_image !!}
-                                    @else
-                                        {{ $item->characters }}
-                                    @endif
+                                >
+                        @if(!is_null($item->character_image))
+                                    {!! $item->character_image !!}
+                                @else
+                                    {{ $item->characters }}
+                                @endif
                     </span>
                                 </a>
                                 &nbsp;
-                            @endforeach
+                            @empty
+                                <span>(None)</span>
+                            @endforelse
+                        </td>
                         @endforeach
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="4" class="text-center">There are no lessons in the queue.</td>
-                </tr>
-            @endforelse
+                    </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="text-center">There are no lessons in the queue.</td>
+                        </tr>
+                    @endforelse
             </tbody>
         </table>
     @empty

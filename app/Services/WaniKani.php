@@ -636,11 +636,27 @@ class WaniKani
                         $object_id = 2;
                         break;
                 }
-                $study_queue['lessons']['subjects'][$subject->level][$object_id][] = $subject;
-                if (!isset($study_queue['lessons']['totals'][$subject->level])) {
-                    $study_queue['lessons']['totals'][$subject->level] = 0;
+                if (!isset($study_queue['lessons']['subjects'][$subject->level][0])) {
+                    $study_queue['lessons']['subjects'][$subject->level][0] = [];
                 }
-                $study_queue['lessons']['totals'][$subject->level]++;
+                if (!isset($study_queue['lessons']['subjects'][$subject->level][1])) {
+                    $study_queue['lessons']['subjects'][$subject->level][1] = [];
+                }
+                if (!isset($study_queue['lessons']['subjects'][$subject->level][2])) {
+                    $study_queue['lessons']['subjects'][$subject->level][2] = [];
+                }
+                $study_queue['lessons']['subjects'][$subject->level][$object_id][] = $subject;
+
+                if (!isset($study_queue['lessons']['totals'][$subject->level][0])) {
+                    $study_queue['lessons']['totals'][$subject->level][0] = 0;
+                }
+                if (!isset($study_queue['lessons']['totals'][$subject->level][1])) {
+                    $study_queue['lessons']['totals'][$subject->level][1] = 0;
+                }
+                if (!isset($study_queue['lessons']['totals'][$subject->level][2])) {
+                    $study_queue['lessons']['totals'][$subject->level][2] = 0;
+                }
+                $study_queue['lessons']['totals'][$subject->level][$object_id]++;
                 ksort($study_queue['lessons']['subjects'][$subject->level]);
             }
         } else {
@@ -681,10 +697,26 @@ class WaniKani
                             $object_id = 2;
                             break;
                     }
-                    if (!isset($study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level])) {
-                        $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level] = 0;
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][0])) {
+                        $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][0] = 0;
                     }
-                    $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level]++;
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][1])) {
+                        $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][1] = 0;
+                    }
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][2])) {
+                        $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][2] = 0;
+                    }
+                    $study_queue['reviews'][$review->hours_from_now]['totals'][$subject->level][$object_id]++;
+
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][0])) {
+                        $study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][0] = [];
+                    }
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][1])) {
+                        $study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][1] = [];
+                    }
+                    if (!isset($study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][2])) {
+                        $study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][2] = [];
+                    }
                     $study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level][$object_id]
                     [] = $subject;
                     ksort($study_queue['reviews'][$review->hours_from_now]['subjects'][$subject->level]);
