@@ -54,6 +54,7 @@ class WaniKani
         $command->comment('Truncating Users...');
         DB::table('users')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Cache::tags(['wanikani_etags', 'wanikani_updated'])->flush();
         $command->comment('Done!');
     }
 
@@ -288,6 +289,8 @@ class WaniKani
                             $subject->kana = null;
                             $subject->parts_of_speech = null;
                         }
+
+                        $subject->lesson_position = $s['data']['lesson_position'];
 
                         $subject->save();
                         $bar->advance();
