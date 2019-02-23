@@ -1,7 +1,7 @@
 <ul class="nav nav-tabs">
     <li class="nav-item">
         @if(request()->is('/'))
-        <a class="nav-link active" href="/">Home</a>
+            <a class="nav-link active" href="/">Home</a>
         @else
             <a class="nav-link" href="/">Home</a>
         @endif
@@ -24,6 +24,15 @@
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link disabled" href="#">Anime</a>
+        @if(request()->is('anime*'))
+            <a class="nav-link active dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Anime</a>
+        @else
+            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Anime</a>
+        @endif
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="{{ route('anime_summary') }}">Summary</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="{{ route('anime_ctw') }}">Commit to Watch</a>
+            </div>
     </li>
 </ul>

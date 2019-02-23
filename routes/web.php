@@ -18,3 +18,8 @@ Route::prefix('wanikani')->group(function () {
     Route::get('/', 'WaniKaniController@index')->name('wk_summary');
     Route::get('/levels/{level?}', 'WaniKaniController@levels')->name('wk_levels');
 });
+
+Route::prefix('anime')->group(function () {
+    Route::get('/', 'AnimeController@index')->name('anime_summary');
+    Route::get('/commit-to-watch', 'AnimeController@commitToWatch')->name('anime_ctw');
+});
