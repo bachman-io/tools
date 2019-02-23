@@ -25,6 +25,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('wanikani:update')->everyTenMinutes();
+        $schedule->command('anilist:update')->hourly();
     }
 
     /**
