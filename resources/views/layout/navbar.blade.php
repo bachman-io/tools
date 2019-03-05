@@ -35,4 +35,7 @@
                 <a class="dropdown-item" href="{{ route('anime_ctw') }}">Commit to Watch</a>
             </div>
     </li>
+    <li class="nav-item">
+        <a class="nav-link disabled" href="#">PrefRev</a>
+    </li>
 </ul>
