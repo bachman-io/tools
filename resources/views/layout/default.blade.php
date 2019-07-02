@@ -30,6 +30,8 @@
 
                 <li  id="menu-item-12" class="menu-item menu-item-type-post_type menu-item-object-page nav-item nav-item-12"><a href="https://www.bachman.io/blog/" class="nav-link">Blog</a></li>
 
+                <li  id="menu-item-194" class="menu-item menu-item-type-post_type menu-item-object-page nav-item nav-item-194"><a href="https://www.bachman.io/novel-2019/" class="nav-link">Novel 2019</a></li>
+
                 <li  id="menu-item-12" class="menu-item menu-item-type-post_type menu-item-object-page nav-item nav-item-12"><a href="https://tools.bachman.io/" class="nav-link">Tools</a></li>
             </ul>
         </div>
