@@ -140,8 +140,7 @@ EOD;
 
     private function getCurrentlyWatching()
     {
-        $currently_watching = Anime::where([
-            ['status', '=', 'Watching'],
+        $currently_watching = Anime::whereIn('status', ['Watching', 'Rewatching'])->where([
             ['progress', '>', '0']
         ])->get();
 
