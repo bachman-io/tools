@@ -28,7 +28,11 @@
             </tr>
             <tr>
                 <td colspan="5">
-                    <p>{!! $anime->description  !!}</p>
+                    @if($anime->description)
+                        <p>{!! $anime->description  !!}</p>
+                    @else
+                        <p>(There is no description for this anime.)</p>
+                    @endif
                     <p><strong>Studio(s):</strong> {!! $anime->studios !!}</p>
                 </td>
             </tr>
